@@ -1,7 +1,7 @@
 # ssj-ucd-metric
 UCD Metric ET calculations.
 
-Lead: UCDavis, Josué Medellín-Azuara
+Lead: UCDavis, Nadya D. Alexander and Josué Medellín-Azuara
 
 Estimates ET based on energy balance and the partition of sensible and
 latent heat flux using mostly Landsat satellite data; with the
