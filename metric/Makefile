@@ -1,5 +1,5 @@
 #! /usr/bin/make -f
-dates:= 2014-09-10 2014-10-12 2014-10-28 2014-12-31 \
+dates:= 2014-10-12 2014-10-28 2014-12-31 \
 2015-03-05 2015-03-21 2015-04-22 \
 2015-05-08 2015-05-24 2015-06-25 \
 2015-07-11 2015-07-27 2015-08-12 \
@@ -8,7 +8,7 @@ dates:= 2014-09-10 2014-10-12 2014-10-28 2014-12-31 \
 tifs:=$(patsubst %,%.tif,${dates})
 
 # Create the filenames from the dates
-$(foreach d,${dates},$(eval img.$d:=$(shell date --date='$d' +P44_R33_34_%Y_%j/products/et24_%m%d%Y_P44R33_L8_BD.img)))
+$(foreach d,${dates},$(eval img.$d:=$(shell date --date='$d' +et24_%m%d%Y_P44R33_L8_BD.img)))
 
 define to_tif
 tifs::$1
@@ -20,8 +20,8 @@ endef
 $(foreach d,${dates},$(eval $(call to_tif,$d.tif,${img.$d})))
 
 #upload to earthengine
-earthengine:col:=users/qjhart/ssj-delta-cu/ssj-ucd-metric/et_landsat
-earthengine:bucket:=gs://qjhart-cats
+earthengine:col:=users/andybell/ssj-ucd-metric/et_landsat
+earthengine:bucket:=gs://ambell-ssj
 earthengine:tifs
 	gsutil cp ${tifs} ${bucket}
 	for i in ${tifs}; do \
@@ -30,7 +30,6 @@ earthengine:tifs
 	    --time_start="$$d" --pyramiding_policy=mean \
 	    --nodata_value=-32767 ${bucket}/$$i; \
 	done
-
+	
 INFO:
 	echo "img.2014-10-28:=${img.2014-10-28}"
-
