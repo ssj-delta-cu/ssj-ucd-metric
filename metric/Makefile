@@ -20,7 +20,7 @@ endef
 $(foreach d,${dates},$(eval $(call to_tif,$d.tif,${img.$d})))
 
 #upload to earthengine
-earthengine:col:=users/andybell/ssj-ucd-metric/et_landsat
+earthengine:col:=users/ucd-cws-ee-data/ssj-delta-cu/ssj-ucd-metric/et_landsat
 earthengine:bucket:=gs://ambell-ssj
 earthengine:tifs
 	gsutil cp ${tifs} ${bucket}
