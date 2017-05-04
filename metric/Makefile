@@ -3,7 +3,10 @@ dates:= 2014-10-12 2014-10-28 2014-12-31 \
 2015-03-05 2015-03-21 2015-04-22 \
 2015-05-08 2015-05-24 2015-06-25 \
 2015-07-11 2015-07-27 2015-08-12 \
-2015-10-31
+2015-10-31 2016-03-23 2016-05-10 \
+2016-05-26 2016-06-27 2016-07-13 \
+2016-07-29 2016-08-14 2016-08-30 \
+2016-09-15 2016-10-01
 
 tifs:=$(patsubst %,%.tif,${dates})
 
@@ -21,7 +24,7 @@ $(foreach d,${dates},$(eval $(call to_tif,$d.tif,${img.$d})))
 
 #upload to earthengine
 earthengine:col:=users/ucd-cws-ee-data/ssj-delta-cu/ssj-ucd-metric/et_landsat
-earthengine:bucket:=gs://ambell-ssj
+earthengine:bucket:=gs://earth-engine-staging
 earthengine:tifs
 	gsutil cp ${tifs} ${bucket}
 	for i in ${tifs}; do \
