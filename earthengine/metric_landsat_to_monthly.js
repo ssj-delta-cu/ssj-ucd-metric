@@ -7,10 +7,19 @@ var cimis_et0 = ee.ImageCollection("users/ucd-cws-ee-data/ssj-delta-cu/ssj-weath
 
 /* UPDATING FOR A NEW YEAR
  This code handles one year at a time. To update to run a new year, do the following.
- 1) Make sure that the
-
-
+ 1) Make sure that the Image Collection defined in cimis_et0 (above) has daily CIMIS rasters that include the entire
+ time period of interest. You'll need to upload new ones for each year (in a separate step), and may need to
+ just switch the referenced Image Collection to a different one
+ 2) Ensure that the METRIC ET images for the year are included in the ImageCollection et_landsat above - same caveats
+ as step 1
+ 3) Add the dates of the images to l_dates (below, around line 312 as of this writing) in 'YYYY-MM-DD' format
+ 4) Define a new set of bands and months for the output image (below, around line 445) for a new year, as an object
+ with keys as "b1", "b2", "b3", etc. and values as the date (in YYYY-MM-DD format) of the first day of each month
+ of the water year. For example: {b1: "2017-10-01", b2: "2017-11-01", b3: "2017-12-01", b4: "2018-01-01"}, etc.
+ Then, make sure to set this new object as the value of band_month.
+ 5) Run the script and export the output from the resulting task.
  */
+
 
 var DELTA = (function () {
     function bbox() {
