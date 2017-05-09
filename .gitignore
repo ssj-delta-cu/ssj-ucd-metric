@@ -1,2 +1,3 @@
 # ignore .img files
 metric/*.img
+.idea/*
