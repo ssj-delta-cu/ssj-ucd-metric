@@ -1,9 +1,10 @@
 /**** Start of imports. If edited, may not auto-convert in the playground. ****/
-var cimis_et0 = ee.ImageCollection("users/ucd-cws-ee-data/ssj-delta-cu/ssj-weather/cimis_eto"),
-    et_landsat = ee.ImageCollection("users/ucd-cws-ee-data/ssj-delta-cu/ssj-ucd-metric/et_landsat");
+var cimis_et0 = ee.ImageCollection("users/ucd-cws-ee-data/ssj-delta-cu/ssj-weather/cimis_eto");
+var et_landsat_path = "users/ucd-cws-ee-data/ssj-delta-cu/ssj-ucd-metric/et_landsat";
+var raw_et_landsat = ee.ImageCollection(et_landsat_path);
 /***** End of imports. If edited, may not auto-convert in the playground. *****/
 
-// ORIGINALLY HOSTED IN GOOGLE EARTH ENGINE - THIS SCRIPT MAY NOT BE THE MOST UP TO DATE, BUT IS INCLUDED HERE FOR REFERENCE.
+//ORIGINALLY HOSTED iN GOOGLE EARTH ENGINE - THE SCRIPT HERE MAY NOT BE FULLY UP TO DATE, BUT IS INCLUDED FOR REFERENCE
 
 /* UPDATING FOR A NEW YEAR
  This code handles one year at a time. To update to run a new year, do the following.
@@ -20,6 +21,88 @@ var cimis_et0 = ee.ImageCollection("users/ucd-cws-ee-data/ssj-delta-cu/ssj-weath
  5) Run the script and export the output from the resulting task.
  */
 
+var l_dates = ['2014-10-12', '2014-10-28', '2014-12-31',
+    '2015-03-05', '2015-03-21', '2015-04-22', '2015-05-08', '2015-05-24',
+//'2015-06-25',
+    '2015-07-11', '2015-07-27', '2015-08-12', '2015-10-31',
+    '2016-03-23', '2016-05-10', '2016-05-26', '2016-06-27',
+    '2016-07-13', '2016-07-29', '2016-08-14', '2016-08-30',
+    '2016-09-15', //'2016-10-01',
+];
+
+var date_objects = l_dates.map(function (d) {
+    var ymd = d.split('-');
+    return new Date(ymd[0], ymd[1] - 1, ymd[2], 0, 0, 0);
+});
+
+// SCALING CODE
+// Scale the ET values by constants to fix issues in 2015/2016 data where values were high. This method has been vetted
+// by Nadya. The main issue is that the twitchell CIMIS Station ETo didn't match the spatial CIMIS value at that location,
+// which was much higher, so Nadya was calibrating to a value that was lower than expected. To correct this, we develop
+// a per-date scaling factor (because the ETo varies so little across the study area, this is safe) and multiply it by the
+// METRIC ETc images to scale their values down to the intended level. Then, we process the data normally. If this needs
+// to be done in a future year, add the ETo values from the twitchell station (or whichever is used for calibration) to
+// the object below, in addition to the other additions mentioned above, then process normally. To turn off, set the flag
+// below to false.
+
+var rescale_ETc_flag = true;
+
+var twitchell_ETo = {
+    '2014-10-12': 6.6,
+    '2014-10-28': 2.36,
+    '2014-12-31': 2.77,
+    '2015-03-05': 2.59,
+    '2015-03-21': 4.09,
+    '2015-04-22': 4.39,
+    '2015-05-08': 4.5,
+    '2015-05-24': 5.83,
+    '2015-07-11': 6.33,
+    '2015-07-27': 7.86,
+    '2015-08-12': 6.49,
+    '2015-10-31': 3.31,
+    '2016-03-23': 3.17,
+    '2016-05-10': 5.99,
+    '2016-05-26': 5.8,
+    '2016-06-27': 9.82,
+    '2016-07-13': 8.41,
+    '2016-07-29': 8.37,
+    '2016-08-14': 7.64,
+    '2016-08-30': 6.93,
+    '2016-09-15': 5.9,
+    '2016-10-01': 4.62
+};
+
+var et_landsat = null;
+if(rescale_ETc_flag === true){
+    var scaled_images = [];
+    l_dates.forEach(function(datestring){
+        var twitchell_value = twitchell_ETo[datestring];  // get the value of twitchell's ETo for the date
+        var cimis_full = ee.Image(cimis_et0.filterDate(ee.Date(datestring), ee.Date(datestring).advance(1, 'day')).first());  // make a 1 day range and use it to select the appropriate CIMIS raster
+
+        var metric_et_image = ee.Image(et_landsat_path + "/" + datestring);
+        var metric_mask = metric_et_image.gt(0);
+        var cimis_masked = cimis_full.mask(metric_mask);
+
+        var avg_cimis = cimis_masked.reduceRegion(ee.Reducer.mean()).getInfo().b1;
+        print("Average CIMIS value for " + datestring + " is " + avg_cimis);
+        var scaling_factor = avg_cimis/twitchell_value;
+        print("Scaling factor for " + datestring + " is " + scaling_factor);
+
+        var scaled_image = metric_et_image.multiply(scaling_factor);
+        scaled_image = scaled_image.setMulti({'system:index': datestring, 'system:time_start':metric_et_image.get("system:time_start")});
+        scaled_images.push(scaled_image)
+        // mask spatial CIMIS to DSA and get average ET for each landsat day
+        // get twitchell value per date, get average spatial CIMIS value, make factor from spatial cimis average/twitchell,
+        // multiply delivered ETc rasters by that factor, reprocess to monthly (below)
+
+    });
+
+    et_landsat = ee.ImageCollection.fromImages(scaled_images);
+} else {
+    et_landsat = raw_et_landsat;
+}
+print(et_landsat);
+print(raw_et_landsat);
 
 var DELTA = (function () {
     function bbox() {
@@ -315,19 +398,6 @@ var DELTA = (function () {
     };
 }()); //v2016-08-04a
 
-var l_dates = ['2014-10-12', '2014-10-28', '2014-12-31',
-    '2015-03-05', '2015-03-21', '2015-04-22', '2015-05-08', '2015-05-24',
-//'2015-06-25',
-    '2015-07-11', '2015-07-27', '2015-08-12', '2015-10-31',
-    '2016-03-23', '2016-05-10', '2016-05-26', '2016-06-27',
-    '2016-07-13', '2016-07-29', '2016-08-14', '2016-08-30',
-    '2016-09-15', //'2016-10-01',
-];
-
-var date_objects = l_dates.map(function (d) {
-    var ymd = d.split('-');
-    return new Date(ymd[0], ymd[1] - 1, ymd[2], 0, 0, 0);
-});
 
 function get_fractions(start_date, end_date) {
     // OK, I haven't finished renaming everything below to make it clearer what's going on, but here's what I think this
@@ -448,11 +518,12 @@ var band_month_2016 = {
     b10: '2016-07-01', b11: '2016-08-01', b12: '2016-09-01',
 };
 
-var band_month = band_month_2016;
+var band_month = band_month_2015;
 
 var bands = ['b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'b10', 'b11', 'b12'];
 
 var monthlyET;
+
 
 
 bands.forEach(function (b) { // this runs once for each month because each band is tied to a month we're working on
@@ -491,7 +562,6 @@ bands.forEach(function (b) { // this runs once for each month because each band 
         }));
     });
 
-
     var filterTimeYMD = ee.Filter.equals({
         leftField: 'ymd',
         rightField: 'system:index'
@@ -510,6 +580,7 @@ bands.forEach(function (b) { // this runs once for each month because each band 
     } else {
         monthlyET = monthlyET.addBands(totET.select([0], [b]));
     }
+
 });
 print(monthlyET);
 Map.addLayer(monthlyET, {bands: ['b1'], min: -10, max: 80}, 'monthlyET');
@@ -529,3 +600,4 @@ Export.image.toAsset({
     crsTransform: opts.crs_transform,
     dimensions: opts.dimensions
 });
+
